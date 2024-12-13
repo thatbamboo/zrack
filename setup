@@ -2,6 +2,6 @@ apt update
 apt upgrade -y
 apt install python python-pip
 pip install colorama pyzipper
-xz -dv assets/passlists/*
+xz -dv passlists/*
 echo "done."
 
