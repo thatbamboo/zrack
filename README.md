@@ -13,12 +13,14 @@ ZRack is a simple Python-based command-line tool designed to brute-force crack p
 
    ```bash
    git clone https://github.com/thatbamboo/zrack.git
-   cd zrack```
+   cd zrack
+   ```
 
 2. Setup:
     
     ```bash
-    ./setup```
+    ./setup
+    ```
 
 ## Usage
 
