@@ -1,5 +1,0 @@
-This is a dummy file. It is used for testing purposes and does not contain any actual data. This file exists as a placeholder.
-
-Feel free to use this dummy file in tests, file operations, or as sample content. It is not meant to hold any significant information. Replace this text as needed.
-
-Thank you for using this dummy file. Remember, it is here purely for testing and demonstration purposes.
