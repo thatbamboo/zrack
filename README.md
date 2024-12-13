@@ -49,5 +49,4 @@ ZRack can do Dictionary attack and Brute-Force attack on a zip file;
 
 ## License
 
-This project is under the MIT License.
-
+This project is under the GNU General Public License v3.0.
