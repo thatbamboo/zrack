@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+import pyzipper, argparse, os, sys, time, itertools
+from colorama import Fore, init
+
+# Initialize colorama for color output
+init(autoreset=True)
+
+# Global Variables
+attempt: int = 0
+startTime: int = time.time()
+version: float = 0.31
+
+
+def end(code: int) -> None:
+    """Exit the program with a status code and timing info."""
+    endTime = time.time() - startTime
+    print(f"{Fore.MAGENTA}Process finished in {endTime:.6f} seconds. Exiting with code {code}.")
+    sys.exit(code)
+
+
+def zipenc(zip_path: str) -> bool:
+    """Check if the ZIP file is encrypted."""
+    try:
+        with pyzipper.AESZipFile(zip_path, 'r') as zip_ref:
+            for zinfo in zip_ref.infolist():
+                if zinfo.flag_bits & 0x1:  # Check if encryption flag is set
+                    return True
+        print(f"{Fore.RED}Error: No encryption detected in the ZIP file.")
+    except (pyzipper.BadZipFile, pyzipper.LargeZipFile) as e:
+        print(f"{Fore.RED}Error: {str(e)}")
+    except Exception as e:
+        print(f"{Fore.RED}Unexpected error: {str(e)}")
+    return False
+
+
+def ziptry(zip_path: str, password: str) -> bool:
+    """Attempt to unlock the ZIP file with the given password."""
+    try:
+        with pyzipper.AESZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.pwd = password.encode()  # Set password
+            for zinfo in zip_ref.infolist():
+                try:
+                    with zip_ref.open(zinfo) as file:
+                        file.read(1)  # Try reading to test password
+                    return True
+                except (RuntimeError, pyzipper.BadZipFile, pyzipper.zipfile.BadZipFile, Exception):
+                    continue
+    except pyzipper.BadZipFile:
+        print(f"{Fore.RED}Error: Bad ZIP file.")
+    except Exception as e:
+        print(f"{Fore.RED}Unexpected error: {str(e)}")
+    return False
+
+
+def brute_force(zip_path: str, charset: list, min_len: int, max_len: int, verbose: bool) -> None:
+    """Perform a brute-force attack on the ZIP file."""
+    global attempt
+    for length in range(min_len, max_len + 1):
+        for password_tuple in itertools.product(charset, repeat=length):
+            password = ''.join(password_tuple)
+            attempt += 1
+            if verbose:
+                print(f"{Fore.CYAN}Attempting password {attempt}: {password}")
+            if ziptry(zip_path, password):
+                print(f"Password found: {Fore.GREEN}{password}{Fore.RESET} after {Fore.YELLOW}{attempt}{Fore.RESET} attempts.")
+                end(0)
+    print(f"{Fore.RED}Password not found within the given parameters.")
+    end(1)
+
+
+def zipdict(zip_path: str, passlpath: str, verbose: bool) -> None:
+    """Process the password list and attempt to unlock the ZIP file."""
+    try:
+        with open(passlpath, "r") as file:
+            for line, password in enumerate(file, 1):
+                global attempt
+                pwd = password.strip()
+                attempt += 1
+                if verbose:
+                    print(f"{Fore.CYAN}Attempting password {attempt}: {pwd}")  # Verbose output in cyan
+                if ziptry(zip_path, pwd):
+                    print(f"Password found: {Fore.GREEN}{pwd}{Fore.RESET} on line {Fore.YELLOW}{line}{Fore.RESET} in attempt {Fore.YELLOW}{attempt}{Fore.RESET}.")
+                    end(0)
+        print(f"{Fore.RED}Password not found in the list.")
+    except FileNotFoundError:
+        print(f"{Fore.RED}Error: Password list file not found.")
+    except Exception as e:
+        print(f"{Fore.RED}Unexpected error: {str(e)}")
+
+
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description="ZRack: ZIP password cracker using a wordlist or brute force.")
+    parser.add_argument('-z', '--zip', type=str, help="Path to the ZIP file.")
+    parser.add_argument('-w', '--wordlist', type=str, help="Path to the password list file.")
+    parser.add_argument('-d', '--directory', type=str, help="Directory containing password list files.")
+    parser.add_argument('-v', '--verbose', action='store_true', help="Verbose output.")
+    parser.add_argument('-b', '--brute-force', action='store_true', help="Brute force the zip file.")
+    parser.add_argument('-bL', '--brute-force-maxlen', type=int, help="Maximum length for password in brute forcing.")
+    parser.add_argument('-bl', '--brute-force-minlen', type=int, help="Minimum length for password in brute forcing.")
+    parser.add_argument('-bc', '--brute-force-charset', type=str, help="Character set to use in brute-forcing password.")
+    return parser.parse_args()
+
+
+# Main code execution starts here
+args = parse_args()
+
+zipf = args.file
+passl = args.wordlist or args.directory  # Use wordlist or directory
+bf = args.brute_force
+bfml = args.brute_force_minlen or 1
+bfxl = args.brute_force_maxlen or 4
+bfc = args.brute_force_charset
+
+if not zipf:
+    print(f"{Fore.RED}Error:{Fore.RESET} No zip file is given.")
+    end(1)
+else:
+    zipf = zipf.strip()
+
+if not os.path.isfile(zipf):
+    print(f"{Fore.RED}Error:{Fore.RESET} ZIP file does not exist.")
+    end(1)
+
+if not zipenc(zipf):
+    print(f"{Fore.RED}Error:{Fore.RESET} The ZIP file is not encrypted or is corrupted.")
+    end(1)
+
+if bf:
+    if bfc:
+        charset = list(bfc)
+    else:
+        charset = list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+")
+    print(f"Starting brute-force attack on {zipf}.")
+    brute_force(zipf, charset, bfml, bfxl, args.verbose)
+elif bf and (args.wordlist or args.directory):
+    print(f"{Fore.RED}Error:{Fore.RESET} Please select between brute-force or wordlist attack.")
+    end(1)
+elif args.wordlist and os.path.isfile(passl):
+    print(f"Starting zrack {version} at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(startTime))} UTC.")
+    zipdict(zipf, passl, args.verbose)
+elif args.directory and os.path.isdir(passl):
+    print(f"Starting zrack {version} at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(startTime))} UTC.")
+    for root, _, files in os.walk(passl):
+        for file_name in files:
+            passlpath = os.path.join(root, file_name)
+            print(f"{Fore.YELLOW}Using password list: {passlpath}")  # Colorized path for directory iteration
+            zipdict(zipf, passlpath, args.verbose)
+else:
+    print(f"{Fore.RED}Error:{Fore.RESET} No password list is given.")
+    end(1)
+
