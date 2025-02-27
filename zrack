@@ -105,7 +105,7 @@ def parse_args():
 # Main code execution starts here
 args = parse_args()
 
-zipf = args.file
+zipf = args.zip
 passl = args.wordlist or args.directory  # Use wordlist or directory
 bf = args.brute_force
 bfml = args.brute_force_minlen or 1
