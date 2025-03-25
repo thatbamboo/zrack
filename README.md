@@ -1,5 +1,7 @@
 # ZRack - Zip Cracking Tool
 
+**THIS REPOSITORY IS NO LONGER MAINTAINED.**
+
 ZRack is a simple Python-based command-line tool designed to brute-force crack password-protected `.zip` files.
 
 ## Features
